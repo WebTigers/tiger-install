@@ -189,33 +189,41 @@ function preflight($docroot, $home) {
 
 /** Resolve the release + the full-app asset. Returns [tag, zipUrl, shaUrl, error]. */
 function resolve_release($version = '') {
-    $url = $version !== ''
-        ? GH_API . '/repos/' . RELEASE_REPO . '/releases/tags/' . rawurlencode($version)
-        : GH_API . '/repos/' . RELEASE_REPO . '/releases/latest';
-    list($body, $code) = http_get($url, 'application/vnd.github+json');
-    if ($body === null || $code >= 400) {
-        return [null, null, null, "Couldn't reach GitHub to find the release (HTTP {$code}). Use manual upload below."];
-    }
-    $rel = json_decode($body, true);
-    if (!is_array($rel) || empty($rel['assets'])) {
-        return [null, null, null, 'The release has no downloadable assets yet.'];
-    }
-    $tag = (string) ($rel['tag_name'] ?? '');
-    $zipUrl = $shaUrl = null; $zipName = '';
-    foreach ($rel['assets'] as $a) {
-        $name = (string) ($a['name'] ?? '');
-        // Full-app bundle: tiger-<version>.zip — NOT the vendor-only tiger-core-vendored-*.zip.
-        if ($zipUrl === null && preg_match('/^tiger-\d[\w.\-]*\.zip$/', $name) && strpos($name, 'core-vendored') === false) {
-            $zipUrl = (string) $a['browser_download_url']; $zipName = $name;
+    if ($version !== '') {
+        list($body, $code) = http_get(GH_API . '/repos/' . RELEASE_REPO . '/releases/tags/' . rawurlencode($version), 'application/vnd.github+json');
+        if ($body === null || $code >= 400) {
+            return [null, null, null, "Couldn't find release {$version} on GitHub (HTTP {$code}). Use manual upload below."];
         }
+        $releases = [json_decode($body, true)];
+    } else {
+        // NOT /releases/latest — that endpoint SKIPS pre-releases, and a beta ships pre-releases.
+        // List recent releases (newest first) and take the first that actually carries our bundle.
+        list($body, $code) = http_get(GH_API . '/repos/' . RELEASE_REPO . '/releases?per_page=20', 'application/vnd.github+json');
+        if ($body === null || $code >= 400) {
+            return [null, null, null, "Couldn't reach GitHub to find a release (HTTP {$code}). Use manual upload below."];
+        }
+        $releases = json_decode($body, true);
+        if (!is_array($releases)) { $releases = []; }
     }
-    if ($zipUrl === null) {
-        return [$tag, null, null, 'No installable full-app bundle (tiger-<version>.zip) is attached to this release yet.'];
+
+    foreach ($releases as $rel) {
+        if (!is_array($rel) || !empty($rel['draft']) || empty($rel['assets'])) { continue; }
+        $tag = (string) ($rel['tag_name'] ?? '');
+        $zipUrl = $shaUrl = null; $zipName = '';
+        foreach ($rel['assets'] as $a) {
+            $name = (string) ($a['name'] ?? '');
+            // Full-app bundle: tiger-<version>.zip — NOT the vendor-only tiger-core-vendored-*.zip.
+            if ($zipUrl === null && preg_match('/^tiger-\d[\w.\-]*\.zip$/', $name) && strpos($name, 'core-vendored') === false) {
+                $zipUrl = (string) $a['browser_download_url']; $zipName = $name;
+            }
+        }
+        if ($zipUrl === null) { continue; }
+        foreach ($rel['assets'] as $a) {
+            if ((string) ($a['name'] ?? '') === $zipName . '.sha256') { $shaUrl = (string) $a['browser_download_url']; }
+        }
+        return [$tag, $zipUrl, $shaUrl, null];
     }
-    foreach ($rel['assets'] as $a) {
-        if ((string) ($a['name'] ?? '') === $zipName . '.sha256') { $shaUrl = (string) $a['browser_download_url']; }
-    }
-    return [$tag, $zipUrl, $shaUrl, null];
+    return [null, null, null, 'No installable full-app bundle (tiger-<version>.zip) found on a recent release yet. Use manual upload below.'];
 }
 
 /* ---------------------------------------------------------------------------
