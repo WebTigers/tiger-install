@@ -172,8 +172,13 @@ function preflight($docroot, $home) {
     $add('curl or allow_url_fopen', function_exists('curl_init') || ini_get('allow_url_fopen'), false,
         'To download Tiger (manual upload offered if missing)', 'Enable curl, or upload the ZIP manually.');
     $add('mbstring', extension_loaded('mbstring'), true, 'UTF-8 text handling', 'Enable mbstring.');
-    $add('openssl / sodium', extension_loaded('openssl') || extension_loaded('sodium'), true,
-        'Secret encryption + TLS', 'Enable openssl (and ideally sodium).');
+    $add('openssl', extension_loaded('openssl'), true, 'HTTPS/TLS + secure tokens',
+        'Enable openssl in cPanel → Select PHP Version → Extensions.');
+    // sodium is REQUIRED (not an alternative to openssl): Tiger_Crypto mints the install secrets
+    // with libsodium secretbox — without it, provisionSecrets fatals on SODIUM_CRYPTO_* constants.
+    $add('sodium (libsodium)', extension_loaded('sodium') || function_exists('sodium_crypto_secretbox'), true,
+        'Secret encryption at rest + 2FA — Tiger mints your install secrets with it',
+        'Enable sodium in cPanel → Select PHP Version → Extensions.');
     $add('Home dir writable', is_writable($home), true, h($home) . ' — where the app is placed',
         'PHP must run as your cPanel user (it does on modern hosts).');
     $add('Docroot writable', is_writable($docroot), true, h($docroot) . ' — for the shim + assets',
