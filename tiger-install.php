@@ -34,7 +34,14 @@ const RELEASE_REPO      = 'webtigers/tiger';   // the skeleton repo whose releas
 const MIN_PHP           = '8.1.0';
 const GH_API            = 'https://api.github.com';
 
-@session_start();
+// CSRF via a same-site double-submit COOKIE — deliberately NOT a PHP session: a native session
+// (session_start) defines SID, and Zend_Session::start() then throws "session has already been
+// started" when we boot Tiger to build the schema. A cookie sidesteps that collision entirely.
+$__csrf = (isset($_COOKIE['tiger_install_csrf']) && preg_match('/^[a-f0-9]{32}$/', (string) $_COOKIE['tiger_install_csrf']))
+    ? (string) $_COOKIE['tiger_install_csrf']
+    : bin2hex(random_bytes(16));
+@setcookie('tiger_install_csrf', $__csrf, ['path' => '/', 'httponly' => true, 'samesite' => 'Lax']);
+$GLOBALS['__csrf'] = $__csrf;
 
 /* ---------------------------------------------------------------------------
  * Tiny helpers
@@ -44,16 +51,13 @@ function h($s) { return htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8'); }
 function post($k, $d = '') { return isset($_POST[$k]) ? trim((string) $_POST[$k]) : $d; }
 function req($k, $d = '') { return isset($_REQUEST[$k]) ? trim((string) $_REQUEST[$k]) : $d; }
 
-/** A single-use-ish CSRF token bound to the session. */
+/** The per-visitor CSRF token (a same-site cookie; see the top of the file). */
 function csrf_token() {
-    if (empty($_SESSION['tiger_install_csrf'])) {
-        $_SESSION['tiger_install_csrf'] = bin2hex(random_bytes(16));
-    }
-    return $_SESSION['tiger_install_csrf'];
+    return isset($GLOBALS['__csrf']) ? (string) $GLOBALS['__csrf'] : '';
 }
 function csrf_ok() {
-    return isset($_SESSION['tiger_install_csrf'])
-        && hash_equals($_SESSION['tiger_install_csrf'], (string) post('_csrf'));
+    return isset($_COOKIE['tiger_install_csrf'])
+        && hash_equals((string) $_COOKIE['tiger_install_csrf'], (string) post('_csrf'));
 }
 
 /** Detect the cPanel account home reliably (POSIX first — correct even for addon docroots). */
