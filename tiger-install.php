@@ -176,13 +176,8 @@ function preflight($docroot, $home) {
     $add('curl or allow_url_fopen', function_exists('curl_init') || ini_get('allow_url_fopen'), false,
         'To download Tiger (manual upload offered if missing)', 'Enable curl, or upload the ZIP manually.');
     $add('mbstring', extension_loaded('mbstring'), true, 'UTF-8 text handling', 'Enable mbstring.');
-    $add('openssl', extension_loaded('openssl'), true, 'HTTPS/TLS + secure tokens',
-        'Enable openssl in cPanel → Select PHP Version → Extensions.');
-    // sodium is OPTIONAL: tiger-core bundles paragonie/sodium_compat (a pure-PHP libsodium polyfill),
-    // so Tiger_Crypto runs without the extension. Native ext-sodium is just faster when present.
-    $add('sodium (libsodium)', extension_loaded('sodium') || function_exists('sodium_crypto_secretbox'), false,
-        'Native-speed crypto (optional) — a pure-PHP polyfill is bundled, so Tiger runs without it',
-        'Optional: enable sodium in Select PHP Version → Extensions for faster crypto.');
+    // No openssl/sodium rows: sodium is polyfilled (paragonie/sodium_compat is bundled) and openssl is
+    // near-universal + covered in practice by the download check — both were just noise for a novice.
     $add('Home dir writable', is_writable($home), true, h($home) . ' — where the app is placed',
         'PHP must run as your cPanel user (it does on modern hosts).');
     $add('Docroot writable', is_writable($docroot), true, h($docroot) . ' — for the shim + assets',
