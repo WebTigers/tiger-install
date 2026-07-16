@@ -582,9 +582,9 @@ case 'finish':
     $body = '<h1>&#127881; Tiger is installed</h1>'
         . '<div class="note ok">Your site is live. The app + your secrets are safely above the web root at <code>' . h($bag['app_dir']) . '</code>.</div>'
         . '<div class="card"><table>'
-        . '<tr><td class="mut">Your site</td><td><a style="color:var(--brand)" href="' . h($base) . '/">' . h($base) . '/</a></td></tr>'
-        . '<tr><td class="mut">Sign in</td><td><a style="color:var(--brand)" href="' . h($base) . '/auth/login">' . h($base) . '/auth/login</a></td></tr>'
-        . '<tr><td class="mut">Admin</td><td><a style="color:var(--brand)" href="' . h($base) . '/admin">' . h($base) . '/admin</a></td></tr>'
+        . '<tr><td class="mut">Your site</td><td><a style="color:var(--brand)" target="_blank" rel="noopener" href="' . h($base) . '/">' . h($base) . '/</a></td></tr>'
+        . '<tr><td class="mut">Sign in</td><td><a style="color:var(--brand)" target="_blank" rel="noopener" href="' . h($base) . '/auth/login">' . h($base) . '/auth/login</a></td></tr>'
+        . '<tr><td class="mut">Admin</td><td><a style="color:var(--brand)" target="_blank" rel="noopener" href="' . h($base) . '/admin">' . h($base) . '/admin</a></td></tr>'
         . '</table></div>'
         . ($deleted
             ? '<div class="note ok">This installer has deleted itself. Nothing else to clean up.</div>'
